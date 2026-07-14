@@ -151,142 +151,160 @@ public class EventRecord
         {
             if (reader.IsStartElement())
             {
-                switch (reader.Name)
+                try
                 {
-                    case "Computer":
-                        reader.Read();
-                        Computer = reader.Value;
-                        break;
-                    case "Channel":
-                        reader.Read();
-                        Channel = reader.Value;
-                        break;
-                    case "EventRecordID":
-                        EventRecordId = reader.ReadElementContentAsString();
-                        break;
-                    case "EventID":
-                        EventId = reader.ReadElementContentAsInt();
-                        break;
-                    case "Level":
-                        var lvl = reader.ReadElementContentAsInt();
-                            
-                        switch (lvl)
-                        {
-                            case 0:
-                                Level = "LogAlways";
-                                break;
-                            case 1:
-                                Level = "Critical";
-                                break;
-                            case 2:
-                                Level = "Error";
-                                break;
-                            case 3:
-                                Level = "Warning";
-                                break;
-                            case 4:
-                                Level = "Info";
-                                break;
-                            case 5:
-                                Level = "Verbose";
-                                break;
-                            
-                            case 8:
-                                Level = "Success";
-                                break;
-                            case 16:
-                                Level = "Failure";
-                                break;
-                            default:
-                                Level = lvl.ToString();
-                                break;
-                        }
+                    switch (reader.Name)
+                    {
+                        case "Computer":
+                            reader.Read();
+                            Computer = reader.Value;
+                            break;
+                        case "Channel":
+                            reader.Read();
+                            Channel = reader.Value;
+                            break;
+                        case "EventRecordID":
+                            EventRecordId = reader.ReadElementContentAsString();
+                            break;
+                        case "EventID":
+                            EventId = reader.ReadElementContentAsInt();
+                            break;
+                        case "Level":
+                            var lvl = reader.ReadElementContentAsInt();
 
-                        break;
+                            switch (lvl)
+                            {
+                                case 0:
+                                    Level = "LogAlways";
+                                    break;
+                                case 1:
+                                    Level = "Critical";
+                                    break;
+                                case 2:
+                                    Level = "Error";
+                                    break;
+                                case 3:
+                                    Level = "Warning";
+                                    break;
+                                case 4:
+                                    Level = "Info";
+                                    break;
+                                case 5:
+                                    Level = "Verbose";
+                                    break;
 
-                    case "Keywords":
+                                case 8:
+                                    Level = "Success";
+                                    break;
+                                case 16:
+                                    Level = "Failure";
+                                    break;
+                                default:
+                                    Level = lvl.ToString();
+                                    break;
+                            }
 
-                        var kw = reader.ReadElementContentAsString();
+                            break;
 
-                        switch (kw)
-                        {
-                            case "0x8010000000000000":
-                                Keywords = "Audit failure";
-                                break;
-                            case "0x8020000000000000":
-                                Keywords = "Audit success";
-                                break;
-                            case "0x8000000000000010":
-                                Keywords = "Time";
-                                break;
-                            case "0x8000000000000080":
-                                Keywords = "State";
-                                break;
-                            case "0x8000000000000040":
-                                Keywords = "Reboot";
-                                break;
-                            case "0x8000000000000018":
-                                Keywords = "Installation";
-                                break;
-                            case "0x8000000000000014":
-                                Keywords = "Download";
-                                break;
-                            case "0x8080000000000000":
-                                Keywords = "Audit success, classic";
-                                break;
-                            case "0x8000000000000000":
-                                Keywords = "Classic";
-                                break;
-                            default:
-                                Keywords = kw;
-                                break;
-                        }
+                        case "Keywords":
 
-                        break;
+                            var kw = reader.ReadElementContentAsString();
 
-                    case "TimeCreated":
-                        var st = reader.GetAttribute("SystemTime");
-                        TimeCreated = DateTimeOffset.Parse(st, null, DateTimeStyles.AssumeUniversal).ToUniversalTime();
-                        break;
-                    case "Provider":
-                        Provider = reader.GetAttribute("Name");
-                        break;
-                    case "Execution":
-                        var pid = reader.GetAttribute("ProcessID");
-                        var tid = reader.GetAttribute("ThreadID");
-                        if (pid!=null)
-                        {
-                            ProcessId = int.Parse(pid);
-                        }
+                            switch (kw)
+                            {
+                                case "0x8010000000000000":
+                                    Keywords = "Audit failure";
+                                    break;
+                                case "0x8020000000000000":
+                                    Keywords = "Audit success";
+                                    break;
+                                case "0x8000000000000010":
+                                    Keywords = "Time";
+                                    break;
+                                case "0x8000000000000080":
+                                    Keywords = "State";
+                                    break;
+                                case "0x8000000000000040":
+                                    Keywords = "Reboot";
+                                    break;
+                                case "0x8000000000000018":
+                                    Keywords = "Installation";
+                                    break;
+                                case "0x8000000000000014":
+                                    Keywords = "Download";
+                                    break;
+                                case "0x8080000000000000":
+                                    Keywords = "Audit success, classic";
+                                    break;
+                                case "0x8000000000000000":
+                                    Keywords = "Classic";
+                                    break;
+                                default:
+                                    Keywords = kw;
+                                    break;
+                            }
 
-                        if (tid != null)
-                        {
-                            ThreadId = int.Parse(tid);
-                        }
-                            
-                        break;
-                    case "Security":
-                        UserId = reader.GetAttribute("UserID");
-                        break;
-                      
-                    case "EventData":
-                    case "UserData":
-                        Payload = reader.ReadOuterXml();
+                            break;
 
-                        break;
+                        case "TimeCreated":
+                            var st = reader.GetAttribute("SystemTime");
+                            TimeCreated = DateTimeOffset.Parse(st, null, DateTimeStyles.AssumeUniversal).ToUniversalTime();
+                            break;
+                        case "Provider":
+                            Provider = reader.GetAttribute("Name");
+                            break;
+                        case "Execution":
+                            var pid = reader.GetAttribute("ProcessID");
+                            var tid = reader.GetAttribute("ThreadID");
+                            if (pid != null)
+                            {
+                                ProcessId = int.Parse(pid);
+                            }
+
+                            if (tid != null)
+                            {
+                                ThreadId = int.Parse(tid);
+                            }
+
+                            break;
+                        case "Security":
+                            UserId = reader.GetAttribute("UserID");
+                            break;
+
+                        case "EventData":
+                        case "UserData":
+                            Payload = reader.ReadOuterXml();
+
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning("Record # {RecordNumber}: Unable to parse XML element {ElementName}. Error: {Message}",RecordNumber,reader.Name,ex.Message);
                 }
             }
         }
 
         if (Payload == null)
         {
-            reader = XmlReader.Create(new StringReader(xml));
-            reader.MoveToContent();
+            try
+            {
+                reader = XmlReader.Create(new StringReader(xml));
+                reader.MoveToContent();
 
-            reader.ReadToDescendant("System");
-            reader.ReadOuterXml();
-            reader.ReadOuterXml();
-            Payload=  reader.ReadOuterXml();
+                if (reader.ReadToDescendant("System"))
+                {
+                    reader.ReadOuterXml();
+                    reader.ReadOuterXml();
+                    Payload = reader.ReadOuterXml();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Record # {RecordNumber}: Unable to extract payload data. Error: {Message}",RecordNumber,ex.Message);
+            }
+
+            Payload ??= string.Empty;
 
         }
 
