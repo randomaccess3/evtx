@@ -1210,7 +1210,10 @@ namespace EvtxECmd;
                     catch (Exception e)
                     {
                         Log.Error("Error processing record #{RecordNumber}: {Message}",eventRecord.RecordNumber,e.Message);
-                        evt.ErrorRecords.Add(21, e.Message);
+                        if (evt.ErrorRecords.ContainsKey(eventRecord.RecordNumber) == false)
+                        {
+                            evt.ErrorRecords.Add(eventRecord.RecordNumber, e.Message);
+                        }
                     }
                 }
 
