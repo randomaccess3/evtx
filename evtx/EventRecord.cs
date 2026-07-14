@@ -15,6 +15,9 @@ namespace evtx;
 
 public class EventRecord
 {
+    private static readonly Regex UnescapedAmpersandRegex =
+        new("&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9A-Fa-f]+;)", RegexOptions.Compiled);
+
     public EventRecord(BinaryReader recordData, int recordPosition, ChunkInfo chunk)
     {
         RecordPosition = recordPosition;
@@ -54,15 +57,19 @@ public class EventRecord
 
                 var found2a = true; //danderspritz test
                 var maxCount = 0;
-                while (recordData.ReadByte() != 0x2a && maxCount<15)
+                while (maxCount < 15 && recordData.BaseStream.Position < recordData.BaseStream.Length)
                 {
-                    if (recordData.BaseStream.Position == recordData.BaseStream.Length)
+                    if (recordData.ReadByte() == 0x2a)
                     {
-                        found2a = false;
-                        break; //out of data
+                        break;
                     }
                     
                     maxCount += 1;
+                }
+
+                if (recordData.BaseStream.Position >= recordData.BaseStream.Length)
+                {
+                    found2a = false;
                 }
                     
                 if (found2a)
@@ -144,142 +151,160 @@ public class EventRecord
         {
             if (reader.IsStartElement())
             {
-                switch (reader.Name)
+                try
                 {
-                    case "Computer":
-                        reader.Read();
-                        Computer = reader.Value;
-                        break;
-                    case "Channel":
-                        reader.Read();
-                        Channel = reader.Value;
-                        break;
-                    case "EventRecordID":
-                        EventRecordId = reader.ReadElementContentAsString();
-                        break;
-                    case "EventID":
-                        EventId = reader.ReadElementContentAsInt();
-                        break;
-                    case "Level":
-                        var lvl = reader.ReadElementContentAsInt();
-                            
-                        switch (lvl)
-                        {
-                            case 0:
-                                Level = "LogAlways";
-                                break;
-                            case 1:
-                                Level = "Critical";
-                                break;
-                            case 2:
-                                Level = "Error";
-                                break;
-                            case 3:
-                                Level = "Warning";
-                                break;
-                            case 4:
-                                Level = "Info";
-                                break;
-                            case 5:
-                                Level = "Verbose";
-                                break;
-                            
-                            case 8:
-                                Level = "Success";
-                                break;
-                            case 16:
-                                Level = "Failure";
-                                break;
-                            default:
-                                Level = lvl.ToString();
-                                break;
-                        }
+                    switch (reader.Name)
+                    {
+                        case "Computer":
+                            reader.Read();
+                            Computer = reader.Value;
+                            break;
+                        case "Channel":
+                            reader.Read();
+                            Channel = reader.Value;
+                            break;
+                        case "EventRecordID":
+                            EventRecordId = reader.ReadElementContentAsString();
+                            break;
+                        case "EventID":
+                            EventId = reader.ReadElementContentAsInt();
+                            break;
+                        case "Level":
+                            var lvl = reader.ReadElementContentAsInt();
 
-                        break;
+                            switch (lvl)
+                            {
+                                case 0:
+                                    Level = "LogAlways";
+                                    break;
+                                case 1:
+                                    Level = "Critical";
+                                    break;
+                                case 2:
+                                    Level = "Error";
+                                    break;
+                                case 3:
+                                    Level = "Warning";
+                                    break;
+                                case 4:
+                                    Level = "Info";
+                                    break;
+                                case 5:
+                                    Level = "Verbose";
+                                    break;
 
-                    case "Keywords":
+                                case 8:
+                                    Level = "Success";
+                                    break;
+                                case 16:
+                                    Level = "Failure";
+                                    break;
+                                default:
+                                    Level = lvl.ToString();
+                                    break;
+                            }
 
-                        var kw = reader.ReadElementContentAsString();
+                            break;
 
-                        switch (kw)
-                        {
-                            case "0x8010000000000000":
-                                Keywords = "Audit failure";
-                                break;
-                            case "0x8020000000000000":
-                                Keywords = "Audit success";
-                                break;
-                            case "0x8000000000000010":
-                                Keywords = "Time";
-                                break;
-                            case "0x8000000000000080":
-                                Keywords = "State";
-                                break;
-                            case "0x8000000000000040":
-                                Keywords = "Reboot";
-                                break;
-                            case "0x8000000000000018":
-                                Keywords = "Installation";
-                                break;
-                            case "0x8000000000000014":
-                                Keywords = "Download";
-                                break;
-                            case "0x8080000000000000":
-                                Keywords = "Audit success, classic";
-                                break;
-                            case "0x8000000000000000":
-                                Keywords = "Classic";
-                                break;
-                            default:
-                                Keywords = kw;
-                                break;
-                        }
+                        case "Keywords":
 
-                        break;
+                            var kw = reader.ReadElementContentAsString();
 
-                    case "TimeCreated":
-                        var st = reader.GetAttribute("SystemTime");
-                        TimeCreated = DateTimeOffset.Parse(st, null, DateTimeStyles.AssumeUniversal).ToUniversalTime();
-                        break;
-                    case "Provider":
-                        Provider = reader.GetAttribute("Name");
-                        break;
-                    case "Execution":
-                        var pid = reader.GetAttribute("ProcessID");
-                        var tid = reader.GetAttribute("ThreadID");
-                        if (pid!=null)
-                        {
-                            ProcessId = int.Parse(pid);
-                        }
+                            switch (kw)
+                            {
+                                case "0x8010000000000000":
+                                    Keywords = "Audit failure";
+                                    break;
+                                case "0x8020000000000000":
+                                    Keywords = "Audit success";
+                                    break;
+                                case "0x8000000000000010":
+                                    Keywords = "Time";
+                                    break;
+                                case "0x8000000000000080":
+                                    Keywords = "State";
+                                    break;
+                                case "0x8000000000000040":
+                                    Keywords = "Reboot";
+                                    break;
+                                case "0x8000000000000018":
+                                    Keywords = "Installation";
+                                    break;
+                                case "0x8000000000000014":
+                                    Keywords = "Download";
+                                    break;
+                                case "0x8080000000000000":
+                                    Keywords = "Audit success, classic";
+                                    break;
+                                case "0x8000000000000000":
+                                    Keywords = "Classic";
+                                    break;
+                                default:
+                                    Keywords = kw;
+                                    break;
+                            }
 
-                        if (tid != null)
-                        {
-                            ThreadId = int.Parse(tid);
-                        }
-                            
-                        break;
-                    case "Security":
-                        UserId = reader.GetAttribute("UserID");
-                        break;
-                      
-                    case "EventData":
-                    case "UserData":
-                        Payload = reader.ReadOuterXml();
+                            break;
 
-                        break;
+                        case "TimeCreated":
+                            var st = reader.GetAttribute("SystemTime");
+                            TimeCreated = DateTimeOffset.Parse(st, null, DateTimeStyles.AssumeUniversal).ToUniversalTime();
+                            break;
+                        case "Provider":
+                            Provider = reader.GetAttribute("Name");
+                            break;
+                        case "Execution":
+                            var pid = reader.GetAttribute("ProcessID");
+                            var tid = reader.GetAttribute("ThreadID");
+                            if (pid != null)
+                            {
+                                ProcessId = int.Parse(pid);
+                            }
+
+                            if (tid != null)
+                            {
+                                ThreadId = int.Parse(tid);
+                            }
+
+                            break;
+                        case "Security":
+                            UserId = reader.GetAttribute("UserID");
+                            break;
+
+                        case "EventData":
+                        case "UserData":
+                            Payload = reader.ReadOuterXml();
+
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning("Record # {RecordNumber}: Unable to parse XML element {ElementName}. Error: {Message}",RecordNumber,reader.Name,ex.Message);
                 }
             }
         }
 
         if (Payload == null)
         {
-            reader = XmlReader.Create(new StringReader(xml));
-            reader.MoveToContent();
+            try
+            {
+                reader = XmlReader.Create(new StringReader(xml));
+                reader.MoveToContent();
 
-            reader.ReadToDescendant("System");
-            reader.ReadOuterXml();
-            reader.ReadOuterXml();
-            Payload=  reader.ReadOuterXml();
+                if (reader.ReadToDescendant("System"))
+                {
+                    reader.ReadOuterXml();
+                    reader.ReadOuterXml();
+                    Payload = reader.ReadOuterXml();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Record # {RecordNumber}: Unable to extract payload data. Error: {Message}",RecordNumber,ex.Message);
+            }
+
+            Payload ??= string.Empty;
 
         }
 
@@ -288,7 +313,14 @@ public class EventRecord
             return;
         }
 
-        if (!EventLog.EventLogMaps.ContainsKey($"{EventId}-{Channel.ToUpperInvariant()}-{Provider.ToUpperInvariant()}"))
+        if (Channel.IsNullOrEmpty() || Provider.IsNullOrEmpty())
+        {
+            return;
+        }
+
+        var mapKey = $"{EventId}-{Channel.ToUpperInvariant()}-{Provider.ToUpperInvariant()}";
+
+        if (!EventLog.EventLogMaps.ContainsKey(mapKey))
         {
             return;
         }
@@ -297,7 +329,7 @@ public class EventRecord
         var nav = docNav.CreateNavigator();
 
         Log.Verbose("Found map for Event ID {EventId} with Channel {Channel} and Provider {Provider}!",EventId,Channel,Provider);
-        var map = EventLog.EventLogMaps[$"{EventId}-{Channel.ToUpperInvariant()}-{Provider.ToUpperInvariant()}"];
+        var map = EventLog.EventLogMaps[mapKey];
 
         MapDescription = map.Description;
 
@@ -432,9 +464,17 @@ public class EventRecord
         ti = (TemplateInstance) ti;
 
         var xmld = new XmlDocument();
-        var rawXml = ti.AsXml(null, RecordPosition).Replace("&", "&amp;");
+        var rawXml = ti.AsXml(null, RecordPosition);
 
-        xmld.LoadXml(rawXml);
+        try
+        {
+            xmld.LoadXml(rawXml);
+        }
+        catch (XmlException)
+        {
+            rawXml = UnescapedAmpersandRegex.Replace(rawXml, "&amp;");
+            xmld.LoadXml(rawXml);
+        }
 
         return Regex.Replace(xmld.Beautify(), " xmlns.+\">", ">",
             RegexOptions.IgnoreCase | RegexOptions.Multiline);

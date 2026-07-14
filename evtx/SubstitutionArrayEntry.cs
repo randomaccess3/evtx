@@ -282,7 +282,27 @@ public class SubstitutionArrayEntry
 
             case TagBuilder.ValueType.ArraySids:
             case TagBuilder.ValueType.Array32BitHex:
+                var a32h = new List<string>();
+                index = 0;
+                while (index < DataBytes.Length)
+                {
+                    var ul = BitConverter.ToUInt32(DataBytes, index);
+                    index += 4;
+                    a32h.Add($"0x{ul:X}");
+                }
+
+                return string.Join(",", a32h);
             case TagBuilder.ValueType.Array64BitHex:
+                var a64h = new List<string>();
+                index = 0;
+                while (index < DataBytes.Length)
+                {
+                    var ul = BitConverter.ToUInt64(DataBytes, index);
+                    index += 8;
+                    a64h.Add($"0x{ul:X}");
+                }
+
+                return string.Join(",", a64h);
 
             default:
                 throw new ArgumentOutOfRangeException(
