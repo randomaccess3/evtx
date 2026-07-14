@@ -28,6 +28,11 @@ internal class TemplateInstance : IBinXml
 
         Template = chunk.GetTemplate(templateOffset);
 
+        if (Template == null)
+        {
+            throw new Exception($"Template could not be resolved at offset 0x{templateOffset:X}");
+        }
+
         Size = Template.Size;
         if (templateOffset < recordPosition)
         {

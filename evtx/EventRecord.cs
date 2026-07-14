@@ -54,12 +54,17 @@ public class EventRecord
 
                 var found2a = true; //danderspritz test
                 var maxCount = 0;
-                while (recordData.ReadByte() != 0x2a && maxCount<15)
+                while (maxCount < 15)
                 {
                     if (recordData.BaseStream.Position == recordData.BaseStream.Length)
                     {
                         found2a = false;
                         break; //out of data
+                    }
+
+                    if (recordData.ReadByte() == 0x2a)
+                    {
+                        break;
                     }
                     
                     maxCount += 1;
@@ -288,7 +293,14 @@ public class EventRecord
             return;
         }
 
-        if (!EventLog.EventLogMaps.ContainsKey($"{EventId}-{Channel.ToUpperInvariant()}-{Provider.ToUpperInvariant()}"))
+        if (Channel.IsNullOrEmpty() || Provider.IsNullOrEmpty())
+        {
+            return;
+        }
+
+        var mapKey = $"{EventId}-{Channel.ToUpperInvariant()}-{Provider.ToUpperInvariant()}";
+
+        if (!EventLog.EventLogMaps.ContainsKey(mapKey))
         {
             return;
         }
@@ -297,7 +309,7 @@ public class EventRecord
         var nav = docNav.CreateNavigator();
 
         Log.Verbose("Found map for Event ID {EventId} with Channel {Channel} and Provider {Provider}!",EventId,Channel,Provider);
-        var map = EventLog.EventLogMaps[$"{EventId}-{Channel.ToUpperInvariant()}-{Provider.ToUpperInvariant()}"];
+        var map = EventLog.EventLogMaps[mapKey];
 
         MapDescription = map.Description;
 
@@ -432,9 +444,17 @@ public class EventRecord
         ti = (TemplateInstance) ti;
 
         var xmld = new XmlDocument();
-        var rawXml = ti.AsXml(null, RecordPosition).Replace("&", "&amp;");
+        var rawXml = ti.AsXml(null, RecordPosition);
 
-        xmld.LoadXml(rawXml);
+        try
+        {
+            xmld.LoadXml(rawXml);
+        }
+        catch (XmlException)
+        {
+            rawXml = Regex.Replace(rawXml, "&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9A-Fa-f]+;)", "&amp;");
+            xmld.LoadXml(rawXml);
+        }
 
         return Regex.Replace(xmld.Beautify(), " xmlns.+\">", ">",
             RegexOptions.IgnoreCase | RegexOptions.Multiline);

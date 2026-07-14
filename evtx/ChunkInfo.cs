@@ -169,6 +169,12 @@ public class ChunkInfo
 
         while (index < chunkBytes.Length)
         {
+            if (index + 8 > chunkBytes.Length)
+            {
+                Log.Verbose("Not enough bytes left in chunk for a record header. Stopping");
+                break;
+            }
+
             var sig = BitConverter.ToInt32(chunkBytes, index);
 
             if (sig != recordSig)
@@ -181,7 +187,7 @@ public class ChunkInfo
             var recordOffset = index;
 
             //do not read past the last known defined record
-            if (recordOffset - absoluteOffset > LastRecordOffset)
+            if (recordOffset > LastRecordOffset)
             {
                 Log.Verbose(
                     "Reached last record offset. Stopping");
@@ -189,6 +195,24 @@ public class ChunkInfo
             }
 
             var recordSize = BitConverter.ToUInt32(chunkBytes, index + 4);
+
+            if (recordSize < 0x18)
+            {
+                Log.Verbose("Invalid record size {RecordSize} at 0x{Offset:X}. Stopping",recordSize,AbsoluteOffset + recordOffset);
+                break;
+            }
+
+            if ((long) index + recordSize > chunkBytes.Length)
+            {
+                Log.Verbose("Record size {RecordSize} at 0x{Offset:X} exceeds remaining chunk bytes. Stopping",recordSize,AbsoluteOffset + recordOffset);
+                break;
+            }
+
+            if ((long) recordOffset + recordSize > FreeSpaceOffset)
+            {
+                Log.Verbose("Record at 0x{Offset:X} extends beyond free space offset. Stopping",AbsoluteOffset + recordOffset);
+                break;
+            }
 
             var recordNumber = BitConverter.ToInt64(chunkBytes, index + 8);
 

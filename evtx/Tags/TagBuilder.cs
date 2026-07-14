@@ -268,6 +268,7 @@ public static class TagBuilder
                 return new Attribute(recordPosition, dataStream, chunk);
 
             case BinaryTag.Value:
+            case BinaryTag.Value2:
                 return new Value(recordPosition, dataStream, chunk);
 
             case BinaryTag.CloseStartElementTag:

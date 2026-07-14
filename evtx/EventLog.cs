@@ -130,21 +130,13 @@ public class EventLog
 
                 if (DisplayValidationResults(validate, mapFile))
                 {
-                    if (EventLogMaps.ContainsKey(
-                            $"{eventMapFile.EventId}-{eventMapFile.Channel.ToUpperInvariant()}") == false)
+                    var mapKey =
+                        $"{eventMapFile.EventId}-{eventMapFile.Channel.ToUpperInvariant()}-{eventMapFile.Provider.ToUpperInvariant()}";
+
+                    if (EventLogMaps.ContainsKey(mapKey) == false)
                     {
                         Log.Debug("{Path} is valid. Adding to maps...",Path.GetFileName(mapFile));
-
-                        // if (eventMapFile.Provider.IsNullOrEmpty() == false)
-                        // {
-                        //     EventLogMaps.Add($"{eventMapFile.EventId}-{eventMapFile.Channel.ToUpperInvariant()}-{eventMapFile.Provider.ToUpperInvariant()}", eventMapFile);
-                        // }
-                        // else
-                        // {
-                        //     
-                        // }
-                        EventLogMaps.Add($"{eventMapFile.EventId}-{eventMapFile.Channel.ToUpperInvariant()}-{eventMapFile.Provider.ToUpperInvariant()}", eventMapFile);    
-                            
+                        EventLogMaps.Add(mapKey, eventMapFile);    
                     }
                     else
                     {
