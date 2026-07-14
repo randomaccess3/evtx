@@ -30,7 +30,7 @@ internal class TemplateInstance : IBinXml
 
         if (Template == null)
         {
-            throw new Exception($"Template could not be resolved at offset 0x{templateOffset:X}");
+            throw new InvalidDataException($"Template could not be resolved at offset 0x{templateOffset:X}");
         }
 
         Size = Template.Size;

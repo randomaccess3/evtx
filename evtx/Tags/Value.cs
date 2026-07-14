@@ -38,7 +38,12 @@ public class Value : IBinXml
 
     private string GetValueData(BinaryReader dataStream)
     {
-        var sizeBytes = Size < 0 ? 0 : (int) Size;
+        if (Size < 0)
+        {
+            throw new InvalidDataException($"Invalid value size {Size} for type {ValueDataType}");
+        }
+
+        var sizeBytes = (int) Size;
 
         switch (ValueDataType)
         {

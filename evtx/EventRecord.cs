@@ -15,6 +15,9 @@ namespace evtx;
 
 public class EventRecord
 {
+    private static readonly Regex UnescapedAmpersandRegex =
+        new("&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9A-Fa-f]+;)", RegexOptions.Compiled);
+
     public EventRecord(BinaryReader recordData, int recordPosition, ChunkInfo chunk)
     {
         RecordPosition = recordPosition;
@@ -54,20 +57,19 @@ public class EventRecord
 
                 var found2a = true; //danderspritz test
                 var maxCount = 0;
-                while (maxCount < 15)
+                while (maxCount < 15 && recordData.BaseStream.Position < recordData.BaseStream.Length)
                 {
-                    if (recordData.BaseStream.Position == recordData.BaseStream.Length)
-                    {
-                        found2a = false;
-                        break; //out of data
-                    }
-
                     if (recordData.ReadByte() == 0x2a)
                     {
                         break;
                     }
                     
                     maxCount += 1;
+                }
+
+                if (recordData.BaseStream.Position >= recordData.BaseStream.Length)
+                {
+                    found2a = false;
                 }
                     
                 if (found2a)
@@ -452,7 +454,7 @@ public class EventRecord
         }
         catch (XmlException)
         {
-            rawXml = Regex.Replace(rawXml, "&(?!amp;|lt;|gt;|quot;|apos;|#\\d+;|#x[0-9A-Fa-f]+;)", "&amp;");
+            rawXml = UnescapedAmpersandRegex.Replace(rawXml, "&amp;");
             xmld.LoadXml(rawXml);
         }
 

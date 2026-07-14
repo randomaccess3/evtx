@@ -202,13 +202,15 @@ public class ChunkInfo
                 break;
             }
 
-            if ((long) index + recordSize > chunkBytes.Length)
+            var recordEndOffset = recordOffset + recordSize;
+
+            if (recordEndOffset > chunkBytes.Length)
             {
                 Log.Verbose("Record size {RecordSize} at 0x{Offset:X} exceeds remaining chunk bytes. Stopping",recordSize,AbsoluteOffset + recordOffset);
                 break;
             }
 
-            if ((long) recordOffset + recordSize > FreeSpaceOffset)
+            if (recordEndOffset > FreeSpaceOffset)
             {
                 Log.Verbose("Record at 0x{Offset:X} extends beyond free space offset. Stopping",AbsoluteOffset + recordOffset);
                 break;
