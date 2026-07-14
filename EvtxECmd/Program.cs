@@ -1173,11 +1173,13 @@ namespace EvtxECmd;
 
                     try
                     {
-                        var xdo = new XmlDocument();
-                        xdo.LoadXml(eventRecord.Payload);
-
-                        var payOut = JsonConvert.SerializeXmlNode(xdo);
-                        eventRecord.Payload = payOut;
+                        if (_csvWriter != null || _swJson != null)
+                        {
+                            if (TryGetPayloadAsJson(eventRecord.Payload, out var payOut))
+                            {
+                                eventRecord.Payload = payOut;
+                            }
+                        }
 
                         _csvWriter?.WriteRecord(eventRecord);
                         _csvWriter?.NextRecord();
@@ -1302,6 +1304,22 @@ namespace EvtxECmd;
             var xdo = new XmlDocument();
             xdo.LoadXml(xmlPayload);
             return JsonConvert.SerializeXmlNode(xdo);
+        }
+
+        private static bool TryGetPayloadAsJson(string xmlPayload, out string payloadAsJson)
+        {
+            payloadAsJson = xmlPayload;
+
+            try
+            {
+                payloadAsJson = GetPayloadAsJson(xmlPayload);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("Unable to convert payload to JSON. Keeping original payload. Error: {Message}",ex.Message);
+                return false;
+            }
         }
 
         private static bool IsAdministrator()
