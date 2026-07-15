@@ -120,6 +120,16 @@ public class EventRecord
     public string Keywords { get; private set; }
     public string SourceFile { get; set; }
 
+    /// <summary>
+    ///     Some providers (e.g. manifest-based/self-describing providers like Microsoft-Windows-Perflib) embed a
+    ///     &lt;RenderingInfo&gt; element alongside &lt;System&gt;. It re-uses several element names found in
+    ///     &lt;System&gt; (Level, Channel, Provider, Keywords, etc.) but with different shapes/content, so it is
+    ///     parsed separately to avoid clobbering the authoritative &lt;System&gt; values. All of its fields are
+    ///     combined into a single JSON blob here, mirroring how <see cref="Payload" /> holds EventData/UserData as a
+    ///     single serialized value.
+    /// </summary>
+    public string RenderingInfo { get; private set; }
+
     public long ExtraDataOffset { get; set; }
     public bool HiddenRecord { get; set; }
 
@@ -146,11 +156,74 @@ public class EventRecord
 
         var reader = XmlReader.Create(new StringReader(xml));
         reader.MoveToContent();
+
+        // Some providers (e.g. manifest-based/self-describing providers like Microsoft-Windows-Perflib) embed a
+        // <RenderingInfo> element alongside <System>. It re-uses several element names from <System> (Level,
+        // Channel, Provider, Keywords, etc.) but with different shapes/content (e.g. Keywords is a list of
+        // <Keyword> child elements instead of a single hex string). It is parsed into its own DTO below so it
+        // never overwrites/corrupts the authoritative <System> values, then combined into a single RenderingInfo
+        // JSON value so its otherwise-unique data (rendered Message, friendly Task name, etc.) isn't silently
+        // discarded.
+        var insideRenderingInfo = false;
+        RenderingInfoData renderingInfoData = null;
+
         // Parse the file and display each of the nodes.
         while (reader.Read())
         {
+            if (reader.NodeType == XmlNodeType.EndElement && reader.Name == "RenderingInfo")
+            {
+                insideRenderingInfo = false;
+                continue;
+            }
+
             if (reader.IsStartElement())
             {
+                if (reader.Name == "RenderingInfo")
+                {
+                    insideRenderingInfo = true;
+                    renderingInfoData ??= new RenderingInfoData();
+                    continue;
+                }
+
+                if (insideRenderingInfo)
+                {
+                    try
+                    {
+                        switch (reader.Name)
+                        {
+                            case "Level":
+                                renderingInfoData.Level = reader.ReadElementContentAsString();
+                                break;
+                            case "Opcode":
+                                renderingInfoData.Opcode = reader.ReadElementContentAsString();
+                                break;
+                            case "Task":
+                                renderingInfoData.Task = reader.ReadElementContentAsString();
+                                break;
+                            case "Channel":
+                                renderingInfoData.Channel = reader.ReadElementContentAsString();
+                                break;
+                            case "Provider":
+                                renderingInfoData.Provider = reader.ReadElementContentAsString();
+                                break;
+                            case "Keywords":
+                                renderingInfoData.Keywords = ReadRenderingInfoKeywords(reader);
+                                break;
+                            case "Message":
+                                renderingInfoData.Message = reader.ReadElementContentAsString();
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warning(
+                            "Record # {RecordNumber}: Unable to parse RenderingInfo XML element {ElementName}. Error: {Message}",
+                            RecordNumber, reader.Name, ex.Message);
+                    }
+
+                    continue;
+                }
+
                 try
                 {
                     switch (reader.Name)
@@ -283,6 +356,11 @@ public class EventRecord
                     Log.Warning("Record # {RecordNumber}: Unable to parse XML element {ElementName}. Error: {Message}",RecordNumber,reader.Name,ex.Message);
                 }
             }
+        }
+
+        if (renderingInfoData != null)
+        {
+            RenderingInfo = renderingInfoData.ToJson();
         }
 
         if (Payload == null)
@@ -452,6 +530,44 @@ public class EventRecord
         }
     }
 
+    /// <summary>
+    ///     RenderingInfo's Keywords element can be either plain text (a single hex bitmask, matching System's shape)
+    ///     or a list of child &lt;Keyword&gt; elements (one per named bit). This reads either shape and returns a
+    ///     comma-separated string of the resolved values.
+    /// </summary>
+    private static string ReadRenderingInfoKeywords(XmlReader reader)
+    {
+        if (reader.IsEmptyElement)
+        {
+            reader.Read();
+            return string.Empty;
+        }
+
+        var keywords = new List<string>();
+
+        using (var subtree = reader.ReadSubtree())
+        {
+            subtree.Read(); // move onto the Keywords start element
+
+            while (subtree.Read())
+            {
+                if (subtree.NodeType == XmlNodeType.Element && subtree.Name == "Keyword")
+                {
+                    keywords.Add(subtree.ReadElementContentAsString());
+                }
+                else if (subtree.NodeType == XmlNodeType.Text)
+                {
+                    keywords.Add(subtree.Value);
+                }
+            }
+        }
+
+        // ReadSubtree leaves the original reader positioned on Keywords' end element, so advance past it
+        reader.Read();
+
+        return string.Join(",", keywords);
+    }
+
     public string ConvertPayloadToXml()
     {
         var ti = Nodes.SingleOrDefault(t => t.TagType == TagBuilder.BinaryTag.TemplateInstance);
@@ -485,4 +601,20 @@ public class EventRecord
         return
             $"Record position: 0x{RecordPosition:X4} Record #: {RecordNumber.ToString().PadRight(3)} Timestamp: {Timestamp:yyyy-MM-dd HH:mm:ss.fffffff} Event ID: {EventId}";
     }
+}
+
+/// <summary>
+///     Holds the fields parsed from a record's optional &lt;RenderingInfo&gt; element. Serialized as a single JSON
+///     blob into <see cref="EventRecord.RenderingInfo" />, mirroring how <see cref="EventRecord.Payload" /> holds
+///     EventData/UserData as a single serialized value.
+/// </summary>
+internal class RenderingInfoData
+{
+    public string Level { get; set; }
+    public string Opcode { get; set; }
+    public string Task { get; set; }
+    public string Channel { get; set; }
+    public string Provider { get; set; }
+    public string Keywords { get; set; }
+    public string Message { get; set; }
 }
