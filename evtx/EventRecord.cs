@@ -537,11 +537,10 @@ public class EventRecord
     /// </summary>
     private static string ReadRenderingInfoKeywords(XmlReader reader)
     {
-        if (reader.IsEmptyElement)
-        {
-            reader.Read();
-            return string.Empty;
-        }
+if (reader.IsEmptyElement)
+{
+    return string.Empty;
+}
 
         var keywords = new List<string>();
 
